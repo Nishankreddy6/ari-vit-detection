@@ -9,7 +9,7 @@ prediction.
 **Tech stack:** Python, PyTorch, OpenCV, NumPy, FastAPI, React, HTML, CSS, JavaScript
 
 ![Demo](docs/demo.png)
-
+*Example X-ray shown is from the Chest X-Ray Images (Pneumonia) dataset (Kermany et al., 2018, CC BY 4.0).*
 
 ## Results
 Evaluated once on the held-out test split of the Chest X-Ray Images (Pneumonia) dataset (624 images: 234 Normal, 390 Pneumonia). The model was selected using the validation split only. Single training run (5 epochs, ViT-B/16 fine-tuned from ImageNet weights).
