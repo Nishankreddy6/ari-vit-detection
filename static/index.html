@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARI Screening Prototype</title>
+  <style>
+    :root { --paper:#f6f8f8; --ink:#13262b; --muted:#55696e; --line:#d3dddf; --teal:#0d6b6e; --warn:#9a3412; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family: "Segoe UI", system-ui, sans-serif; line-height:1.55; }
+    .page { max-width: 960px; margin:0 auto; padding:48px 20px 32px; }
+    h1 { font-size: clamp(1.6rem,4vw,2.3rem); line-height:1.15; margin:0 0 12px; font-weight:600; }
+    .lede { max-width:62ch; color:var(--muted); margin:0 0 32px; }
+    .workspace { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+    .drop { aspect-ratio:1; border:1.5px dashed var(--teal); border-radius:6px; display:grid; place-items:center; text-align:center; padding:24px; color:var(--muted); cursor:pointer; background:#fff; overflow:hidden; }
+    .drop.has-image { padding:0; border-style:solid; border-color:var(--line); background:#000; }
+    .drop img { width:100%; height:100%; object-fit:contain; }
+    .panel { display:flex; flex-direction:column; gap:20px; }
+    button { width:100%; padding:13px 18px; font:inherit; font-weight:600; color:#fff; background:var(--teal); border:0; border-radius:6px; cursor:pointer; }
+    button:disabled { background:#9db7b8; cursor:not-allowed; }
+    .error { color:var(--warn); margin:0; } .hint { color:var(--muted); margin:0; }
+    .bar-row { display:grid; grid-template-columns:100px 1fr 56px; align-items:center; gap:10px; margin-bottom:8px; }
+    .bar { height:10px; background:var(--line); border-radius:5px; overflow:hidden; }
+    .bar > div { height:100%; background:var(--teal); transition:width .4s ease; }
+    .pct { text-align:right; font-variant-numeric:tabular-nums; }
+    footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem; max-width:70ch; }
+    @media (max-width:720px) { .workspace { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React loaded from a CDN (needs internet; no Node.js required) -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useRef } = React;
+
+    function App() {
+      const [file, setFile] = useState(null);
+      const [preview, setPreview] = useState(null);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState("");
+      const [loading, setLoading] = useState(false);
+      const input = useRef(null);
+
+      function choose(f) {
+        if (!f) return;
+        setFile(f); setResult(null); setError("");
+        setPreview(URL.createObjectURL(f));
+      }
+
+      async function analyse() {
+        setLoading(true); setError("");
+        try {
+          const body = new FormData();
+          body.append("file", file);
+          const res = await fetch("/predict", { method: "POST", body });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Request failed");
+          setResult(data);
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      return (
+        <main className="page">
+          <h1>Acute respiratory infection screening</h1>
+          <p className="lede">Upload a chest X-ray and a Vision Transformer will estimate how likely it is to show signs of ARI. This is a student research prototype.</p>
+
+          <section className="workspace">
+            <div className={"drop" + (preview ? " has-image" : "")}
+                 onClick={() => input.current.click()}
+                 onDragOver={(e) => e.preventDefault()}
+                 onDrop={(e) => { e.preventDefault(); choose(e.dataTransfer.files[0]); }}>
+              {preview ? <img src={preview} alt="Selected X-ray" /> : <span>Drop an image here or click to choose (JPG or PNG)</span>}
+              <input ref={input} type="file" accept="image/png,image/jpeg" hidden onChange={(e) => choose(e.target.files[0])} />
+            </div>
+
+            <div className="panel">
+              <button disabled={!file || loading} onClick={analyse}>{loading ? "Analysing..." : "Analyse image"}</button>
+              {error && <p className="error">{error}</p>}
+              {result ? (
+                <div>
+                  <p>Model output: <strong>{result.label}</strong></p>
+                  {Object.entries(result.probabilities).map(([name, p]) => (
+                    <div key={name} className="bar-row">
+                      <span>{name}</span>
+                      <div className="bar"><div style={{ width: (p * 100).toFixed(1) + "%" }} /></div>
+                      <span className="pct">{(p * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (!error && <p className="hint">Results appear here after analysis.</p>)}
+            </div>
+          </section>
+
+          <footer>Not a medical device and not for clinical use. Model outputs can be wrong and must never replace assessment by a qualified clinician.</footer>
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

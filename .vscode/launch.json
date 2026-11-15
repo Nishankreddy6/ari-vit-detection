@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "1. Train model",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train.py",
+      "args": ["--data-dir", "data", "--epochs", "5"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "2. Evaluate model",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/evaluate.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "3. Run web app",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app:app", "--reload"],
+      "console": "integratedTerminal"
+    }
+  ]
+}
